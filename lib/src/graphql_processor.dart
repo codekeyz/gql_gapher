@@ -108,20 +108,51 @@ Future<String> getClassDefinition(
   return classDefinition;
 }
 
-final typeTransformationMap = <String, Type>{
+final scalarTransformMap = <String, Type>{
   'String': String,
   'Int': int,
   'Float': double,
   'Boolean': bool,
 };
 
-Reference extractVariableType(TypeNode type) {
-  if (type is NamedTypeNode) {
-    var dartType = typeTransformationMap[type.name.value];
-    if (dartType != null) {
-      if (!type.isNonNull) return refer('$dartType?');
-      return refer('$dartType');
+extension ListScalarExtension on Type {
+  Type get toListType {
+    switch (this) {
+      case String:
+        return List<String>;
+      case int:
+        return List<int>;
+      case double:
+        return List<double>;
+      case bool:
+        return List<bool>;
+      default:
+        return List<dynamic>;
     }
   }
-  return refer('dynamic');
+}
+
+Reference extractVariableType(TypeNode type) {
+  Reference returnNullableIfTrue(Type type, {bool nullable = true}) {
+    if (type == dynamic || !nullable) return refer('$type');
+    return refer('$type?');
+  }
+
+  Type getType(TypeNode node) {
+    final defaultType = dynamic;
+    if (type is NamedTypeNode) {
+      return scalarTransformMap[type.name.value] ?? defaultType;
+    } else if (type is ListTypeNode) {
+      final subType = type.type;
+      if (subType is NamedTypeNode) {
+        final result = scalarTransformMap[subType.name.value] ?? defaultType;
+        return result.toListType;
+      }
+      return List<dynamic>;
+    } else {
+      return defaultType;
+    }
+  }
+
+  return returnNullableIfTrue(getType(type), nullable: !type.isNonNull);
 }
