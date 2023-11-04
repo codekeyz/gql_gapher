@@ -6,25 +6,24 @@ import 'package:gql/language.dart' as lang;
 import 'graphql_file.dart';
 
 Future<GraphqlFile> processGraphqlFile(GraphqlFile file) async {
-  file.build();
-
-  final _docNode = lang.parseString(file.fileContents);
+  final gqlNode = lang.parseString(file.fileContents);
 
   final _optNode =
-      _docNode.definitions.firstWhere((e) => e is OperationDefinitionNode)
+      gqlNode.definitions.firstWhere((e) => e is OperationDefinitionNode)
           as OperationDefinitionNode;
-
   final _variables = _optNode.variableDefinitions
       .map((e) => GraphqlVariable(
             e.variable.name.value,
+            extractVariableType(e.type),
             nullable: !e.type.isNonNull,
           ))
       .toList();
 
   return file
-    ..withGqlQuery(lang.printNode(_docNode))
+    ..withGqlQuery(lang.printNode(gqlNode))
     ..withVariables(_variables)
-    ..withOperationName(_optNode.name?.value);
+    ..withOperationName(_optNode.name?.value)
+    ..build();
 }
 
 Future<String> getClassDefinition(
@@ -62,26 +61,27 @@ Future<String> getClassDefinition(
           Map<String, dynamic> _variablsMap = {};
 
           if (_variabls != null) {
-            for (final variab in _variabls) {
-              if (variab.nullable) {
+            for (final variable in _variabls) {
+              if (variable.nullable) {
                 builder.optionalParameters.add(
                   Parameter((builder) => builder
-                    ..name = variab.name
+                    ..name = variable.name
                     ..required = false
                     ..named = true
-                    ..type = refer('dynamic')),
+                    ..type = variable.type),
                 );
 
-                _variablsMap['if (${variab.name} != null) "${variab.name}"'] =
-                    "${variab.name}";
+                _variablsMap[
+                        'if (${variable.name} != null) "${variable.name}"'] =
+                    "${variable.name}";
               } else {
                 builder.requiredParameters.add(
                   Parameter((builder) => builder
-                    ..name = variab.name
-                    ..type = refer('dynamic')),
+                    ..name = variable.name
+                    ..type = variable.type),
                 );
 
-                _variablsMap['"${variab.name}"'] = "${variab.name}";
+                _variablsMap['"${variable.name}"'] = "${variable.name}";
               }
             }
 
@@ -91,11 +91,9 @@ Future<String> getClassDefinition(
               _code += ', operationName: "${file.operationName}"';
             }
 
-            if (_variablsMap.isNotEmpty) {
-              _code += ', variables: $_variablsMap';
-            }
+            if (_variablsMap.isNotEmpty) _code += ', variables: $_variablsMap';
 
-            _code += ')';
+            _code += ',)';
 
             builder.initializers.add(Code(_code));
           }
@@ -108,4 +106,22 @@ Future<String> getClassDefinition(
       DartFormatter().format('${library.accept(DartEmitter())}');
 
   return classDefinition;
+}
+
+final typeTransformationMap = <String, Type>{
+  'String': String,
+  'Int': int,
+  'Float': double,
+  'Boolean': bool,
+};
+
+Reference extractVariableType(TypeNode type) {
+  if (type is NamedTypeNode) {
+    var dartType = typeTransformationMap[type.name.value];
+    if (dartType != null) {
+      if (!type.isNonNull) return refer('$dartType?');
+      return refer('$dartType');
+    }
+  }
+  return refer('dynamic');
 }
