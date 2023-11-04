@@ -1,3 +1,5 @@
+import 'package:code_builder/code_builder.dart' show Reference;
+
 class GraphqlFile {
   final String fileContents;
   final String fileName;
@@ -41,10 +43,12 @@ class GraphqlFile {
 
 class GraphqlVariable {
   final String name;
+  final Reference type;
   final bool nullable;
 
   const GraphqlVariable(
-    this.name, {
+    this.name,
+    this.type, {
     this.nullable = false,
   });
 }
