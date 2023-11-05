@@ -121,7 +121,7 @@ Reference getVariableType(TypeNode type) {
     return '$type?';
   }
 
-  getDartType(TypeNode node) => node is NamedTypeNode
+  Type getDartType(TypeNode node) => node is NamedTypeNode
       ? (scalarTransformMap[node.name.value] ?? dynamic)
       : dynamic;
 
