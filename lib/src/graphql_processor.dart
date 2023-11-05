@@ -14,7 +14,7 @@ Future<GraphqlFile> processGraphqlFile(GraphqlFile file) async {
   final _variables = _optNode.variableDefinitions
       .map((e) => GraphqlVariable(
             e.variable.name.value,
-            extractVariableType(e.type),
+            getVariableType(e.type),
             nullable: !e.type.isNonNull,
           ))
       .toList();
@@ -108,51 +108,35 @@ Future<String> getClassDefinition(
   return classDefinition;
 }
 
-final scalarTransformMap = <String, Type>{
+const scalarTransformMap = <String, Type>{
   'String': String,
   'Int': int,
   'Float': double,
   'Boolean': bool,
 };
 
-extension ListScalarExtension on Type {
-  Type get toListType {
-    switch (this) {
-      case String:
-        return List<String>;
-      case int:
-        return List<int>;
-      case double:
-        return List<double>;
-      case bool:
-        return List<bool>;
+Reference getVariableType(TypeNode type) {
+  String valueOrNullable(String type, {bool nonNull = false}) {
+    if (type == 'dynamic' || nonNull) return '$type';
+    return '$type?';
+  }
+
+  getDartType(TypeNode node) => node is NamedTypeNode
+      ? (scalarTransformMap[node.name.value] ?? dynamic)
+      : dynamic;
+
+  String getType(TypeNode node) {
+    switch (node.runtimeType) {
+      case NamedTypeNode:
+        return valueOrNullable(getDartType(node).toString(),
+            nonNull: node.isNonNull);
+      case ListTypeNode:
+        final subType = getType((node as ListTypeNode).type);
+        return valueOrNullable('List<$subType>', nonNull: type.isNonNull);
       default:
-        return List<dynamic>;
-    }
-  }
-}
-
-Reference extractVariableType(TypeNode type) {
-  Reference returnNullableIfTrue(Type type, {bool nullable = true}) {
-    if (type == dynamic || !nullable) return refer('$type');
-    return refer('$type?');
-  }
-
-  Type getType(TypeNode node) {
-    final defaultType = dynamic;
-    if (type is NamedTypeNode) {
-      return scalarTransformMap[type.name.value] ?? defaultType;
-    } else if (type is ListTypeNode) {
-      final subType = type.type;
-      if (subType is NamedTypeNode) {
-        final result = scalarTransformMap[subType.name.value] ?? defaultType;
-        return result.toListType;
-      }
-      return List<dynamic>;
-    } else {
-      return defaultType;
+        return 'dynamic';
     }
   }
 
-  return returnNullableIfTrue(getType(type), nullable: !type.isNonNull);
+  return refer(getType(type));
 }
