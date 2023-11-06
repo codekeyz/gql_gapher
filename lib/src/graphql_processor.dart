@@ -30,8 +30,6 @@ Future<String> getClassDefinition(
   GraphqlFile file, {
   String baseClassName = 'Request',
 }) async {
-  final _className = '${file.className}$baseClassName';
-
   final Library library = Library((builder) {
     builder.body.addAll([
       Directive.import(
@@ -39,7 +37,7 @@ Future<String> getClassDefinition(
         show: ['GraphqlRequest'],
       ),
       Class((ClassBuilder builder) {
-        builder.name = _className;
+        builder.name = '${file.className}$baseClassName';
         builder.extend = refer('GraphqlRequest');
 
         builder.fields.add(
@@ -57,11 +55,11 @@ Future<String> getClassDefinition(
           ),
         );
         builder.constructors.add(Constructor((builder) {
-          final _variabls = file.variables;
+          final variables = file.variables ?? [];
           Map<String, dynamic> _variablsMap = {};
 
-          if (_variabls != null) {
-            for (final variable in _variabls) {
+          if (variables.isNotEmpty) {
+            for (final variable in variables) {
               if (variable.nullable) {
                 builder.optionalParameters.add(
                   Parameter((builder) => builder
@@ -80,32 +78,28 @@ Future<String> getClassDefinition(
                     ..name = variable.name
                     ..type = variable.type),
                 );
-
                 _variablsMap['"${variable.name}"'] = "${variable.name}";
               }
             }
-
-            var _code = 'super(_query';
-
-            if (file.operationName != null) {
-              _code += ', operationName: "${file.operationName}"';
-            }
-
-            if (_variablsMap.isNotEmpty) _code += ', variables: $_variablsMap';
-
-            _code += ',)';
-
-            builder.initializers.add(Code(_code));
           }
+
+          var _code = 'super(_query';
+
+          if (file.operationName != null) {
+            _code += ', operationName: "${file.operationName}"';
+          }
+
+          if (_variablsMap.isNotEmpty) _code += ', variables: $_variablsMap';
+
+          _code += ',)';
+
+          builder.initializers.add(Code(_code));
         }));
       })
     ]);
   });
 
-  final classDefinition =
-      DartFormatter().format('${library.accept(DartEmitter())}');
-
-  return classDefinition;
+  return DartFormatter().format('${library.accept(DartEmitter())}');
 }
 
 const scalarTransformMap = <String, Type>{
@@ -116,7 +110,7 @@ const scalarTransformMap = <String, Type>{
 };
 
 Reference getVariableType(TypeNode type) {
-  String valueOrNullable(String type, {bool nonNull = false}) {
+  String typeOrNullable(String type, {bool nonNull = false}) {
     if (type == 'dynamic' || nonNull) return '$type';
     return '$type?';
   }
@@ -126,16 +120,19 @@ Reference getVariableType(TypeNode type) {
       : dynamic;
 
   String getType(TypeNode node) {
-    switch (node.runtimeType) {
-      case NamedTypeNode:
-        return valueOrNullable(getDartType(node).toString(),
-            nonNull: node.isNonNull);
-      case ListTypeNode:
-        final subType = getType((node as ListTypeNode).type);
-        return valueOrNullable('List<$subType>', nonNull: type.isNonNull);
-      default:
-        return 'dynamic';
-    }
+    if (node is NamedTypeNode)
+      return typeOrNullable(
+        getDartType(node).toString(),
+        nonNull: node.isNonNull,
+      );
+    else if (node is ListTypeNode) {
+      final subType = node.type;
+      return typeOrNullable(
+        'List<${getType(subType)}>',
+        nonNull: subType.isNonNull,
+      );
+    } else
+      return 'dynamic';
   }
 
   return refer(getType(type));

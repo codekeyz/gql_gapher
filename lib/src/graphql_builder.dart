@@ -7,21 +7,18 @@ import 'graphql_processor.dart';
 class GraphqlBuilder implements Builder {
   @override
   FutureOr<void> build(BuildStep buildStep) async {
-    // currently matched asset
-    final _inputId = buildStep.inputId;
-    final _resultFile = _inputId.changeExtension('.g.dart');
+    final inputId = buildStep.inputId;
+    final resultFile = inputId.changeExtension('.g.dart');
 
-    final _fileBaseName = buildStep.inputId.pathSegments.last;
-    final _fileContents = await buildStep.readAsString(_inputId);
+    final gqlFile = GraphqlFile(
+      fileContents: await buildStep.readAsString(inputId),
+      fileName: inputId.pathSegments.last,
+    );
 
-    final _result = await processGraphqlFile(GraphqlFile(
-      fileContents: _fileContents,
-      fileName: _fileBaseName,
-    ));
-
-    final _classString = await getClassDefinition(_result);
-
-    await buildStep.writeAsString(_resultFile, _classString);
+    final resultClass = await getClassDefinition(
+      await processGraphqlFile(gqlFile),
+    );
+    await buildStep.writeAsString(resultFile, resultClass);
   }
 
   @override
