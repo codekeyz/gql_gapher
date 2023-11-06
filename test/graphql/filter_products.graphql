@@ -1,0 +1,5 @@
+query FilterProductsTags($filters: [String!], $sku: [Int]!, $product: ID!) {
+  filterProducts(filters: $filters, sku: $sku, product: $product) {
+    __typename
+  }
+}

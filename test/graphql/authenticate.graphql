@@ -1,0 +1,17 @@
+mutation AuthenticateUser(
+  $token: String!
+  $attempt: Int!
+  $persist: Boolean
+  $amount: Float
+) {
+  authenticate(
+    input: {
+      firebase: { token: $token }
+      data: { attempt: $attempt }
+      amount: $amount
+    }
+    rememberMe: $persist
+  ) {
+    __typename
+  }
+}
