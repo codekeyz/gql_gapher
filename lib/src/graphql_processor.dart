@@ -103,6 +103,7 @@ Future<String> getClassDefinition(
 }
 
 const scalarTransformMap = <String, Type>{
+  'ID': String,
   'String': String,
   'Int': int,
   'Float': double,
@@ -129,7 +130,7 @@ Reference getVariableType(TypeNode type) {
       final subType = node.type;
       return typeOrNullable(
         'List<${getType(subType)}>',
-        nonNull: subType.isNonNull,
+        nonNull: node.isNonNull,
       );
     } else
       return 'dynamic';

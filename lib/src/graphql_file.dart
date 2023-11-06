@@ -51,4 +51,25 @@ class GraphqlVariable {
     this.type, {
     this.nullable = false,
   });
+
+  @override
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is GraphqlVariable &&
+        other.name == name &&
+        other.type.symbol == type.symbol &&
+        other.nullable == nullable;
+  }
+
+  @override
+  int get hashCode {
+    return name.hashCode ^ type.hashCode ^ nullable.hashCode;
+  }
+
+  @override
+  String toString() => """ 
+  name:       $name
+  type:       ${type.symbol}
+  nullable:   $nullable""";
 }

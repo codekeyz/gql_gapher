@@ -1,0 +1,13 @@
+query UpdateUserData(
+  $profileItems: [UserProfileItem!]!
+  $userId: ID!
+  $location: Location!
+) {
+  updateUser(
+    profileItems: $profileItems
+    userId: $userId
+    location: $location
+  ) {
+    __typename
+  }
+}
