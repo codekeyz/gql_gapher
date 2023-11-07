@@ -1,105 +1,104 @@
 import 'package:code_builder/code_builder.dart';
-import 'package:dart_style/dart_style.dart';
 import 'package:gql/ast.dart';
 import 'package:gql/language.dart' as lang;
 
 import 'graphql_file.dart';
 
-Future<GraphqlFile> processGraphqlFile(GraphqlFile file) async {
-  final gqlNode = lang.parseString(file.fileContents);
+Future<List<GraphqlOperation>> parseGraphqlFile(
+  String fileContents,
+  String fileName,
+) async {
+  final gqlNode = lang.parseString(fileContents);
 
-  final _optNode =
-      gqlNode.definitions.firstWhere((e) => e is OperationDefinitionNode)
-          as OperationDefinitionNode;
-  final _variables = _optNode.variableDefinitions
-      .map((e) => GraphqlVariable(
-            e.variable.name.value,
-            getVariableType(e.type),
-            nullable: !e.type.isNonNull,
-          ))
-      .toList();
+  final List<GraphqlOperation> operations = [];
 
-  return file
-    ..withGqlQuery(lang.printNode(gqlNode))
-    ..withVariables(_variables)
-    ..withOperationName(_optNode.name?.value)
-    ..build();
+  for (final node in gqlNode.definitions) {
+    if (node is OperationDefinitionNode) {
+      final variables = node.variableDefinitions
+          .map((e) => OperationVariable(
+                e.variable.name.value,
+                getVariableType(e.type),
+                nullable: !e.type.isNonNull,
+              ))
+          .toList();
+
+      final operation = GraphqlOperation(
+        lang.printNode(node),
+        name: node.name?.value,
+        variables: variables,
+      );
+      operations.add(operation);
+    }
+  }
+
+  return operations;
 }
 
-Future<String> getClassDefinition(
-  GraphqlFile file, {
+Future<Class> getClassDefinition(
+  GraphqlOperation operation, {
   String baseClassName = 'Request',
 }) async {
-  final Library library = Library((builder) {
-    builder.body.addAll([
-      Directive.import(
-        'package:gql_client/gql_client.dart',
-        show: ['GraphqlRequest'],
-      ),
-      Class((ClassBuilder builder) {
-        builder.name = '${file.className}$baseClassName';
-        builder.extend = refer('GraphqlRequest');
+  return Class((ClassBuilder builder) {
+    final operationName = operation.name;
 
-        builder.fields.add(
-          Field(
-            (builder) => builder
-              ..static = true
-              ..name = '_query'
-              ..type = refer('String')
-              ..modifier = FieldModifier.constant
-              ..assignment = Code("""
+    builder.name = '$operationName$baseClassName';
+    builder.extend = refer('GraphqlRequest');
+
+    builder.fields.add(
+      Field(
+        (builder) => builder
+          ..static = true
+          ..name = '_query'
+          ..type = refer('String')
+          ..modifier = FieldModifier.constant
+          ..assignment = Code("""
                     r\"\"\"
-                    ${file.gqlString}
+                    ${operation.query}
                     \"\"\"
                   """),
-          ),
-        );
-        builder.constructors.add(Constructor((builder) {
-          final variables = file.variables ?? [];
-          Map<String, dynamic> _variablsMap = {};
+      ),
+    );
+    builder.constructors.add(Constructor((builder) {
+      final variables = operation.variables ?? [];
+      Map<String, dynamic> _variablsMap = {};
 
-          if (variables.isNotEmpty) {
-            for (final variable in variables) {
-              if (variable.nullable) {
-                builder.optionalParameters.add(
-                  Parameter((builder) => builder
-                    ..name = variable.name
-                    ..required = false
-                    ..named = true
-                    ..type = variable.type),
-                );
+      if (variables.isNotEmpty) {
+        for (final variable in variables) {
+          if (variable.nullable) {
+            builder.optionalParameters.add(
+              Parameter((builder) => builder
+                ..name = variable.name
+                ..required = false
+                ..named = true
+                ..type = variable.type),
+            );
 
-                _variablsMap[
-                        'if (${variable.name} != null) "${variable.name}"'] =
-                    "${variable.name}";
-              } else {
-                builder.requiredParameters.add(
-                  Parameter((builder) => builder
-                    ..name = variable.name
-                    ..type = variable.type),
-                );
-                _variablsMap['"${variable.name}"'] = "${variable.name}";
-              }
-            }
+            _variablsMap['if (${variable.name} != null) "${variable.name}"'] =
+                "${variable.name}";
+          } else {
+            builder.requiredParameters.add(
+              Parameter((builder) => builder
+                ..name = variable.name
+                ..type = variable.type),
+            );
+            _variablsMap['"${variable.name}"'] = "${variable.name}";
           }
+        }
+      }
 
-          var _code = 'super(_query';
+      var _code = 'super(_query';
 
-          if (file.operationName != null) {
-            _code += ', operationName: "${file.operationName}"';
-          }
+      if (operation.name != null) {
+        _code += ', operationName: "$operationName"';
+      }
 
-          if (_variablsMap.isNotEmpty) _code += ', variables: $_variablsMap';
+      if (_variablsMap.isNotEmpty) _code += ', variables: $_variablsMap';
 
-          _code += ',)';
+      _code += ',)';
 
-          builder.initializers.add(Code(_code));
-        }));
-      })
-    ]);
+      builder.initializers.add(Code(_code));
+    }));
   });
-
-  return DartFormatter().format('${library.accept(DartEmitter())}');
 }
 
 const scalarTransformMap = <String, Type>{

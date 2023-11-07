@@ -1,52 +1,11 @@
 import 'package:code_builder/code_builder.dart' show Reference;
 
-class GraphqlFile {
-  final String fileContents;
-  final String fileName;
-
-  List<GraphqlVariable>? _variables;
-  String? _gqlString;
-  String? _className;
-
-  String? _operationName;
-
-  String get gqlString => _gqlString!;
-  String get className => _className!;
-  String? get operationName => _operationName;
-  List<GraphqlVariable>? get variables => _variables;
-
-  GraphqlFile({
-    required this.fileContents,
-    required this.fileName,
-  });
-
-  void withVariables(List<GraphqlVariable> variables) {
-    _variables = variables;
-  }
-
-  void withOperationName(String? operationName) {
-    _operationName = operationName;
-  }
-
-  void withGqlQuery(String query) {
-    _gqlString = query;
-  }
-
-  void build() {
-    final _splitNames = fileName.split('.')[0];
-    _className = _splitNames
-        .split('_')
-        .map((e) => e.replaceFirst(e[0], e[0].toUpperCase()))
-        .join();
-  }
-}
-
-class GraphqlVariable {
+class OperationVariable {
   final String name;
   final Reference type;
   final bool nullable;
 
-  const GraphqlVariable(
+  const OperationVariable(
     this.name,
     this.type, {
     this.nullable = false,
@@ -56,7 +15,7 @@ class GraphqlVariable {
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
-    return other is GraphqlVariable &&
+    return other is OperationVariable &&
         other.name == name &&
         other.type.symbol == type.symbol &&
         other.nullable == nullable;
@@ -72,4 +31,31 @@ class GraphqlVariable {
   name:       $name
   type:       ${type.symbol}
   nullable:   $nullable""";
+}
+
+class GraphqlOperation {
+  final String query;
+  final String? name;
+  final List<OperationVariable>? variables;
+
+  const GraphqlOperation(
+    this.query, {
+    this.variables,
+    this.name,
+  });
+
+  @override
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is GraphqlOperation &&
+        other.query == query &&
+        other.name == name &&
+        other.variables == variables;
+  }
+
+  @override
+  int get hashCode {
+    return name.hashCode ^ query.hashCode ^ variables.hashCode;
+  }
 }

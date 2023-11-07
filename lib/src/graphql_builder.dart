@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:build/build.dart';
+import 'package:code_builder/code_builder.dart';
+import 'package:dart_style/dart_style.dart';
 import 'graphql_file.dart';
 import 'graphql_processor.dart';
 
@@ -10,15 +12,26 @@ class GraphqlBuilder implements Builder {
     final inputId = buildStep.inputId;
     final resultFile = inputId.changeExtension('.g.dart');
 
-    final gqlFile = GraphqlFile(
-      fileContents: await buildStep.readAsString(inputId),
-      fileName: inputId.pathSegments.last,
+    final operations = await parseGraphqlFile(
+      await buildStep.readAsString(inputId),
+      inputId.pathSegments.last,
     );
 
-    final resultClass = await getClassDefinition(
-      await processGraphqlFile(gqlFile),
+    final classes = await Future.wait(operations.map(getClassDefinition));
+    final library = Library((builder) {
+      builder.body.addAll([
+        Directive.import(
+          'package:gql_client/gql_client.dart',
+          show: ['GraphqlRequest'],
+        ),
+        ...classes,
+      ]);
+    });
+
+    await buildStep.writeAsString(
+      resultFile,
+      DartFormatter().format('${library.accept(DartEmitter())}'),
     );
-    await buildStep.writeAsString(resultFile, resultClass);
   }
 
   @override

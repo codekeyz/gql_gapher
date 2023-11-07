@@ -15,52 +15,47 @@ void main() {
   test("basic scalar types -> Int, String, Float, Boolean", () async {
     final fileName = 'authenticate.graphql';
     final fileContent = await getFileContent(fileName);
-    final result = await processGraphqlFile(GraphqlFile(
-      fileContents: fileContent,
-      fileName: fileName,
-    ));
+    final operations = await parseGraphqlFile(fileContent, fileName);
 
-    expect(result.className, 'Authenticate');
-    expect(result.operationName, 'AuthenticateUser');
-    expect(result.variables, [
-      GraphqlVariable('token', refer('String'), nullable: false),
-      GraphqlVariable('attempt', refer('int'), nullable: false),
-      GraphqlVariable('persist', refer('bool?'), nullable: true),
-      GraphqlVariable('amount', refer('double?'), nullable: true),
+    expect(operations.length, 1);
+
+    final operation = operations[0];
+    expect(operation.variables, [
+      OperationVariable('token', refer('String'), nullable: false),
+      OperationVariable('attempt', refer('int'), nullable: false),
+      OperationVariable('persist', refer('bool?'), nullable: true),
+      OperationVariable('amount', refer('double?'), nullable: true),
     ]);
   });
 
   test("list types scalar types -> [Int], [String], etc", () async {
     final fileName = 'filter_products.graphql';
     final fileContent = await getFileContent(fileName);
-    final result = await processGraphqlFile(GraphqlFile(
-      fileContents: fileContent,
-      fileName: fileName,
-    ));
+    final operations = await parseGraphqlFile(fileContent, fileName);
 
-    expect(result.className, 'FilterProducts');
-    expect(result.operationName, 'FilterProductsTags');
-    expect(result.variables, [
-      GraphqlVariable('filters', refer('List<String>?'), nullable: true),
-      GraphqlVariable('sku', refer('List<int?>'), nullable: false),
-      GraphqlVariable('product', refer('String'), nullable: false),
+    expect(operations.length, 1);
+
+    final operation = operations[0];
+    expect(operation.variables, [
+      OperationVariable('filters', refer('List<String>?'), nullable: true),
+      OperationVariable('sku', refer('List<int?>'), nullable: false),
+      OperationVariable('product', refer('String'), nullable: false),
     ]);
   });
 
   test("complex types we know nothing about", () async {
     final fileName = 'update_user_data.graphql';
     final fileContent = await getFileContent(fileName);
-    final result = await processGraphqlFile(GraphqlFile(
-      fileContents: fileContent,
-      fileName: fileName,
-    ));
+    final operations = await parseGraphqlFile(fileContent, fileName);
 
-    expect(result.className, 'UpdateUserData');
-    expect(result.operationName, 'UpdateUserData');
-    expect(result.variables, [
-      GraphqlVariable('profileItems', refer('List<dynamic>'), nullable: false),
-      GraphqlVariable('userId', refer('String'), nullable: false),
-      GraphqlVariable('location', refer('dynamic'), nullable: false),
+    expect(operations.length, 1);
+    final operation = operations[0];
+
+    expect(operation.variables, [
+      OperationVariable('profileItems', refer('List<dynamic>'),
+          nullable: false),
+      OperationVariable('userId', refer('String'), nullable: false),
+      OperationVariable('location', refer('dynamic'), nullable: false),
     ]);
   });
 }
