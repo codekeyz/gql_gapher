@@ -35,13 +35,13 @@ class OperationVariable {
 
 class GraphqlOperation {
   final String query;
-  final String? name;
+  final String name;
   final List<OperationVariable>? variables;
 
   const GraphqlOperation(
+    this.name,
     this.query, {
     this.variables,
-    this.name,
   });
 
   @override

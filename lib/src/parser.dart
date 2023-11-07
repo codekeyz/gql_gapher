@@ -2,14 +2,10 @@ import 'package:code_builder/code_builder.dart';
 import 'package:gql/ast.dart';
 import 'package:gql/language.dart' as lang;
 
-import 'graphql_file.dart';
+import 'data.dart';
 
-Future<List<GraphqlOperation>> parseGraphqlFile(
-  String fileContents,
-  String fileName,
-) async {
-  final gqlNode = lang.parseString(fileContents);
-
+Future<List<GraphqlOperation>> parseGqlString(String gqlString) async {
+  final gqlNode = lang.parseString(gqlString);
   final List<GraphqlOperation> operations = [];
 
   for (final node in gqlNode.definitions) {
@@ -22,9 +18,12 @@ Future<List<GraphqlOperation>> parseGraphqlFile(
               ))
           .toList();
 
+      var name = node.name?.value;
+      name ??= (node.selectionSet.selections[0] as FieldNode).name.value;
+
       final operation = GraphqlOperation(
+        name,
         lang.printNode(node),
-        name: node.name?.value,
         variables: variables,
       );
       operations.add(operation);
@@ -38,12 +37,14 @@ Future<Class> getClassDefinition(
   GraphqlOperation operation, {
   String baseClassName = 'Request',
 }) async {
+  String capitalizeFirst(String word) =>
+      word.isEmpty ? word : word[0].toUpperCase() + word.substring(1);
+
   return Class((ClassBuilder builder) {
     final operationName = operation.name;
 
-    builder.name = '$operationName$baseClassName';
+    builder.name = '${capitalizeFirst(operationName)}$baseClassName';
     builder.extend = refer('GraphqlRequest');
-
     builder.fields.add(
       Field(
         (builder) => builder
