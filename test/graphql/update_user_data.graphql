@@ -1,4 +1,4 @@
-query UpdateUserData(
+mutation UpdateUserData(
   $profileItems: [UserProfileItem!]!
   $userId: ID!
   $location: Location!

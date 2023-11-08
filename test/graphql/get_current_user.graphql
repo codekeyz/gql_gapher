@@ -1,0 +1,13 @@
+#import "test/graphql/fragments/user.graphql"
+#import "test/graphql/fragments/location.graphql"
+
+query {
+  currentUser {
+    user {
+      ...UserFragment
+    }
+    location {
+      ...LocationFragment
+    }
+  }
+}

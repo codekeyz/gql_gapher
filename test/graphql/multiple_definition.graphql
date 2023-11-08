@@ -1,0 +1,15 @@
+#import "test/graphql/fragments/location.graphql"
+
+query UserHomeInfo {
+  userHome {
+    home {
+      ...LocationFragment
+    }
+  }
+}
+
+fragment LocationFragment on House {
+  location {
+    latitude
+  }
+}

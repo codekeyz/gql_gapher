@@ -1,0 +1,7 @@
+fragment LocationFragment on House {
+  location {
+    latitude
+    longitude
+    name
+  }
+}

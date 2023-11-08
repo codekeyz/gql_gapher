@@ -1,0 +1,219 @@
+import 'dart:io';
+
+import 'package:code_builder/code_builder.dart';
+import 'package:gql/ast.dart';
+import 'package:gql/language.dart' as lang;
+import 'package:path/path.dart' as path;
+
+import 'data.dart';
+
+Future<List<GraphqlOperation>> parseGqlString(String gqlString) async {
+  final gqlNode = lang.parseString(gqlString);
+  final imports = await resolveImports(gqlString);
+
+  final List<GraphqlOperation> operations = [];
+  final Map<String, FragmentDefinitionNode> fragmentsMap = {};
+  if (imports.isNotEmpty) {
+    fragmentsMap.addEntries(imports.map((e) => MapEntry(e.name.value, e)));
+  }
+
+  final internalFragmentDefinitions = gqlNode.definitions
+      .where((e) => e is FragmentDefinitionNode)
+      .map((e) => e as FragmentDefinitionNode)
+      .toList();
+  for (final frag in internalFragmentDefinitions) {
+    final key = frag.name.value;
+    if (fragmentsMap.containsKey(key)) {
+      throw Exception(
+          'Fragment: $key is defined in the query and also imported. Please remove one');
+    }
+    fragmentsMap[key] = frag;
+  }
+
+  for (final node in gqlNode.definitions) {
+    if (node is OperationDefinitionNode) {
+      final variables = node.variableDefinitions
+          .map((e) => OperationVariable(
+                e.variable.name.value,
+                getVariableType(e.type),
+                nullable: !e.type.isNonNull,
+              ))
+          .toList();
+
+      var name = node.name?.value;
+      name ??= (node.selectionSet.selections[0] as FieldNode).name.value;
+
+      final query = lang.printNode(node);
+      final fragments = <FragmentDefinitionNode>[];
+      final dependents = getFragmentDeps(query);
+      for (final dep in dependents) {
+        final frag = fragmentsMap[dep];
+        if (frag == null)
+          throw Exception('No Type Definition found for Fragment $dep');
+        fragments.add(frag);
+      }
+
+      operations.add(GraphqlOperation(
+        name,
+        query,
+        variables: variables,
+        fragments: fragments,
+      ));
+    }
+  }
+
+  return operations;
+}
+
+Future<Class> getClassDefinition(
+  GraphqlOperation operation, {
+  String baseClassName = 'Request',
+}) async {
+  String capitalizeFirst(String word) =>
+      word.isEmpty ? word : word[0].toUpperCase() + word.substring(1);
+
+  return Class((ClassBuilder builder) {
+    final operationName = operation.name;
+    String query = operation.query;
+
+    final fragments = operation.fragments ?? [];
+    if (fragments.length > 0) {
+      query += fragments.fold<String>(
+        '',
+        (previousValue, e) => previousValue + "\n\n${lang.printNode(e)}",
+      );
+    }
+
+    builder.name = '${capitalizeFirst(operationName)}$baseClassName';
+    builder.extend = refer('GraphqlRequest');
+    builder.fields.add(
+      Field(
+        (builder) => builder
+          ..static = true
+          ..name = '_query'
+          ..type = refer('String')
+          ..modifier = FieldModifier.constant
+          ..assignment = Code("""
+                    r\"\"\"
+                    $query
+                    \"\"\"
+                  """),
+      ),
+    );
+    builder.constructors.add(Constructor((builder) {
+      final variables = operation.variables ?? [];
+      Map<String, dynamic> _variablsMap = {};
+
+      if (variables.isNotEmpty) {
+        for (final variable in variables) {
+          if (variable.nullable) {
+            builder.optionalParameters.add(
+              Parameter((builder) => builder
+                ..name = variable.name
+                ..required = false
+                ..named = true
+                ..type = variable.type),
+            );
+
+            _variablsMap['if (${variable.name} != null) "${variable.name}"'] =
+                "${variable.name}";
+          } else {
+            builder.requiredParameters.add(
+              Parameter((builder) => builder
+                ..name = variable.name
+                ..type = variable.type),
+            );
+            _variablsMap['"${variable.name}"'] = "${variable.name}";
+          }
+        }
+      }
+
+      final codeChunks = <String>[
+        '_query',
+        'operationName: "$operationName"',
+        if (variables.isNotEmpty) 'variables: $_variablsMap'
+      ].join(',');
+
+      builder.initializers.add(Code('super($codeChunks)'));
+    }));
+  });
+}
+
+const scalarTransformMap = <String, Type>{
+  'ID': String,
+  'String': String,
+  'Int': int,
+  'Float': double,
+  'Boolean': bool,
+};
+
+Reference getVariableType(TypeNode type) {
+  String typeOrNullable(String type, {bool nonNull = false}) {
+    if (type == 'dynamic' || nonNull) return '$type';
+    return '$type?';
+  }
+
+  Type getDartType(TypeNode node) => node is NamedTypeNode
+      ? (scalarTransformMap[node.name.value] ?? dynamic)
+      : dynamic;
+
+  String getType(TypeNode node) {
+    if (node is NamedTypeNode)
+      return typeOrNullable(
+        getDartType(node).toString(),
+        nonNull: node.isNonNull,
+      );
+    else if (node is ListTypeNode) {
+      final subType = node.type;
+      return typeOrNullable(
+        'List<${getType(subType)}>',
+        nonNull: node.isNonNull,
+      );
+    } else
+      return 'dynamic';
+  }
+
+  return refer(getType(type));
+}
+
+final splitLines = RegExp(r'(\r\n|\r|\n)');
+
+Set<String> getFragmentDeps(String query) {
+  final lines = query.split(splitLines);
+  final fragRegx = RegExp(r'^[^#]*\.\.\.(\w+)');
+  final fragSpreads = lines.where((e) => fragRegx.hasMatch(e)).toList();
+  return fragSpreads
+      .map((e) => fragRegx.allMatches(e).map((e) => e.group(1)).first!)
+      .toSet();
+}
+
+Future<List<FragmentDefinitionNode>> resolveImports(
+  String source,
+) async {
+  final importLines =
+      source.split(splitLines).where((e) => e.startsWith('#import ')).toList();
+
+  final Map<String, FragmentDefinitionNode> importsMap = {};
+
+  for (final line in importLines) {
+    final match = RegExp("^['\"](.+)['\"]").firstMatch(line.split(" ")[1]);
+    var filePath = match?.group(1);
+    if (filePath == null) throw Exception('File path in $line not valid');
+    filePath = path.normalize(path.join(Directory.current.path, filePath));
+    final content = await File(filePath).readAsString();
+
+    final node = lang.parseString(content);
+    for (final node in node.definitions) {
+      if (node is! FragmentDefinitionNode) {
+        throw Exception('Only Fragments are supported in imports');
+      }
+      final key = node.name.value;
+      if (!importsMap.containsKey(key))
+        importsMap[key] = node;
+      else
+        throw Exception('Many Fragments with the same name imported: $key');
+    }
+  }
+
+  return importsMap.values.toList();
+}
