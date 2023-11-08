@@ -60,4 +60,16 @@ void main() {
       OperationVariable('location', refer('dynamic'), nullable: false),
     ]);
   });
+
+  test("fragment imports test", () async {
+    final fileContent = await getFileContent('get_current_user.graphql');
+    final operations = await parseGqlString(fileContent);
+
+    expect(operations.length, 1);
+    final operation = operations[0];
+    expect(operation.name, 'currentUser');
+    expect(operation.fragments!.length, 1);
+    expect(operation.fragments?[0].name.value, 'UserFragment');
+    expect(operation.variables, []);
+  });
 }

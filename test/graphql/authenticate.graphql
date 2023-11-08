@@ -12,7 +12,11 @@ mutation AuthenticateUser(
     }
     rememberMe: $persist
   ) {
-    __typename
+    user {
+      id
+      email
+      phone
+    }
   }
 }
 
