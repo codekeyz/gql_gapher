@@ -1,0 +1,6 @@
+fragment UserFragment on User {
+  name
+  age
+  createdAt
+  updatedAt
+}

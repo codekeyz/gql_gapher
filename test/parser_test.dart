@@ -62,14 +62,32 @@ void main() {
   });
 
   test("fragment imports test", () async {
-    final fileContent = await getFileContent('get_current_user.graphql');
+    var fileContent = await getFileContent('get_current_user.graphql');
     final operations = await parseGqlString(fileContent);
 
     expect(operations.length, 1);
-    final operation = operations[0];
-    expect(operation.name, 'currentUser');
-    expect(operation.fragments!.length, 1);
-    expect(operation.fragments?[0].name.value, 'UserFragment');
-    expect(operation.variables, []);
+    expect(operations[0].name, 'currentUser');
+    expect(operations[0].variables, []);
+
+    final fragments = operations[0].fragments ?? [];
+    expect(fragments.length, 2);
+    expect(fragments[0].name.value, 'UserFragment');
+    expect(fragments[1].name.value, 'LocationFragment');
+
+    fileContent = await getFileContent('get_house_data.graphql');
+    await expectLater(
+        parseGqlString(fileContent),
+        throwsA(predicate((e) =>
+            e is Exception &&
+            (e as dynamic).message ==
+                'No Type Definition found for Fragment LocationFragment')));
+
+    fileContent = await getFileContent('multiple_definition.graphql');
+    await expectLater(
+        parseGqlString(fileContent),
+        throwsA(predicate((e) =>
+            e is Exception &&
+            (e as dynamic).message ==
+                'Fragment: LocationFragment is defined in the query and also imported. Please remove one')));
   });
 }

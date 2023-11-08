@@ -1,4 +1,5 @@
-#import "test/graphql/fragments/user_fragment.graphql"
+#import "test/graphql/fragments/user.graphql"
+#import "test/graphql/fragments/location.graphql"
 
 query {
   currentUser {
@@ -6,9 +7,7 @@ query {
       ...UserFragment
     }
     location {
-      name
-      latitude
-      longitude
+      ...LocationFragment
     }
   }
 }
