@@ -1,4 +1,5 @@
 import 'package:code_builder/code_builder.dart' show Reference;
+import 'package:gql/ast.dart';
 
 class OperationVariable {
   final String name;
@@ -37,25 +38,30 @@ class GraphqlOperation {
   final String query;
   final String name;
   final List<OperationVariable>? variables;
+  final List<FragmentDefinitionNode>? fragments;
 
   const GraphqlOperation(
     this.name,
     this.query, {
     this.variables,
+    this.fragments,
   });
 
-  @override
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is GraphqlOperation &&
         other.query == query &&
         other.name == name &&
-        other.variables == variables;
+        other.variables == variables &&
+        other.fragments == fragments;
   }
 
   @override
   int get hashCode {
-    return name.hashCode ^ query.hashCode ^ variables.hashCode;
+    return name.hashCode ^
+        query.hashCode ^
+        variables.hashCode ^
+        fragments.hashCode;
   }
 }

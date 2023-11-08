@@ -13,6 +13,8 @@ class GraphqlBuilder implements Builder {
     final fileContent = await buildStep.readAsString(inputId);
 
     final operations = await parseGqlString(fileContent);
+    if (operations.isEmpty) return;
+
     final classes = await Future.wait(operations.map(getClassDefinition));
     final library = Library((builder) {
       builder.body.addAll([
