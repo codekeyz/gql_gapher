@@ -8,8 +8,8 @@ import 'package:gql_codegen/src/data.dart';
 void main() {
   const RESOURCE_PATH = 'test/graphql';
 
-  Future<String> getFileContent(String filename) async {
-    return await File('$RESOURCE_PATH/$filename').readAsString();
+  Future<String> getFileContent(String filepath) async {
+    return await File('$RESOURCE_PATH/$filepath').readAsString();
   }
 
   test("basic scalar types -> Int, String, Float, Boolean", () async {
@@ -63,7 +63,11 @@ void main() {
 
   test("fragment imports test", () async {
     var fileContent = await getFileContent('get_current_user.graphql');
-    final operations = await parseGqlString(fileContent);
+
+    final operations = await parseGqlString(fileContent, sources: [
+      await getFileContent('fragments/location.graphql'),
+      await getFileContent('fragments/user.graphql')
+    ]);
 
     expect(operations.length, 1);
     expect(operations[0].name, 'currentUser');
@@ -84,7 +88,9 @@ void main() {
 
     fileContent = await getFileContent('multiple_definition.graphql');
     await expectLater(
-        parseGqlString(fileContent),
+        parseGqlString(fileContent, sources: [
+          await getFileContent('fragments/location.graphql'),
+        ]),
         throwsA(predicate((e) =>
             e is Exception &&
             (e as dynamic).message ==
