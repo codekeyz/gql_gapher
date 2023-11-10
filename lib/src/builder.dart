@@ -16,15 +16,7 @@ class GraphqlBuilder implements Builder {
     if (operations.isEmpty) return;
 
     final classes = await Future.wait(operations.map(getClassDefinition));
-    final library = Library((builder) {
-      builder.body.addAll([
-        Directive.import(
-          'package:gql_client/gql_client.dart',
-          show: ['GraphqlRequest'],
-        ),
-        ...classes,
-      ]);
-    });
+    final library = Library((lib) => lib.body.addAll(classes));
 
     await buildStep.writeAsString(
       resultFile,
