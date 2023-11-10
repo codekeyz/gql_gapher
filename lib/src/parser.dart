@@ -1,15 +1,15 @@
-import 'dart:io';
-
 import 'package:code_builder/code_builder.dart';
 import 'package:gql/ast.dart';
 import 'package:gql/language.dart' as lang;
-import 'package:path/path.dart' as path;
 
 import 'data.dart';
 
-Future<List<GraphqlOperation>> parseGqlString(String gqlString) async {
+Future<List<GraphqlOperation>> parseGqlString(
+  String gqlString, {
+  List<String> sources = const [],
+}) async {
   final gqlNode = lang.parseString(gqlString);
-  final imports = await resolveImports(gqlString);
+  final imports = await resolveImports(sources);
 
   final List<GraphqlOperation> operations = [];
   final Map<String, FragmentDefinitionNode> fragmentsMap = {};
@@ -195,22 +195,25 @@ Set<String> getFragmentDeps(String query) {
       .toSet();
 }
 
+List<String> getImportLines(String source) => source
+        .split(splitLines)
+        .where((e) => e.startsWith('#import '))
+        .toList()
+        .map((e) {
+      final match =
+          RegExp("^['\"](.+)['\"]").firstMatch(e.split(" ")[1])?.group(1);
+      if (match == null) throw Exception('Import path is not valid $e');
+      return match;
+    }).toList();
+
 Future<List<FragmentDefinitionNode>> resolveImports(
-  String source,
+  List<String> sources,
 ) async {
-  final importLines =
-      source.split(splitLines).where((e) => e.startsWith('#import ')).toList();
+  if (sources.isEmpty) return [];
 
   final Map<String, FragmentDefinitionNode> importsMap = {};
-
-  for (final line in importLines) {
-    final match = RegExp("^['\"](.+)['\"]").firstMatch(line.split(" ")[1]);
-    var filePath = match?.group(1);
-    if (filePath == null) throw Exception('File path in $line not valid');
-    filePath = path.normalize(path.join(Directory.current.path, filePath));
-    final content = await File(filePath).readAsString();
-
-    final node = lang.parseString(content);
+  for (final source in sources) {
+    final node = lang.parseString(source);
     for (final node in node.definitions) {
       if (node is! FragmentDefinitionNode) {
         throw Exception('Only Fragments are supported in imports');
@@ -222,6 +225,5 @@ Future<List<FragmentDefinitionNode>> resolveImports(
         throw Exception('Many Fragments with the same name imported: $key');
     }
   }
-
   return importsMap.values.toList();
 }
