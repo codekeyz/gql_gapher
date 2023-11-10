@@ -1,5 +1,7 @@
 # gql_codegen
 
+[![Dart CI](https://github.com/codekeyz/gql_codegen/workflows/Dart/badge.svg)](https://github.com/codekeyz/gql_codegen/actions/workflows/dart.yml)
+
 Tired of writing your queries & mutation as raw strings `r""" """` in Dart and Flutter? 👋
 
 Validate and generate typed request classes for all your queries and mutations defined in GraphQL `(.graphql|.gql)` files. It also supports Fragments.
