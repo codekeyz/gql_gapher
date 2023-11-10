@@ -1,11 +1,11 @@
 targets:
   gql_codegen:gql_codegen:
     builders:
-      gql_codegen|gqlBuilder:
+      gql_codegen|gql_codegen_builder:
         enabled: True
 
 builders:
-  gqlBuilder:
+  gql_codegen_builder:
     import: "package:gql_codegen/gql_codegen.dart"
     builder_factories: ["gqlBuilder"]
     build_extensions: { ".graphql": [".g.dart"], ".gql": [".g.dart"] }
