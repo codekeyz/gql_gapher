@@ -1,5 +1,5 @@
 name: gql_codegen
-description: Generator for Graphql Files
+description: Tired of raw strings for Graphql requests in Dart? Write fluent graphql code in your .graphql/.gql files.
 version: 1.0.0
 publish_to: none
 
@@ -13,8 +13,6 @@ dependencies:
   build: ^2.0.2
 
 dev_dependencies:
-  flutter_test:
-    sdk: flutter
   very_good_analysis: ^2.0.4
   build_runner: ^2.4.6
   test: ^1.24.3
