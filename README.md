@@ -77,10 +77,16 @@ Fragment Imports are supported as seen in the sample below.
 
 ```graphql
 #import "../fragments/user_fragment.graphql"
+#import "../fragments/location_fragment.graphql"
 
-mutation GetUser($token: String!) {
+query GetUser($token: String!) {
   authenticate(input: { firebase: { token: $token } }, rememberMe: true) {
-    __typename
+    location {
+      name
+      latitude
+      longitude
+      ...LocationFragment
+    }
     ...UserFragment
   }
 }
