@@ -1,5 +1,5 @@
-#import "test/graphql/fragments/location.graphql"
-#import "test/graphql/fragments/location.graphql"
+#import "./fragments/location.graphql"
+#import "./fragments/location.graphql"
 
 query UserHomeInfo {
   userHome {
