@@ -85,29 +85,37 @@ Future<Class> getClassDefinition(
     }
 
     builder.name = '${capitalizeFirst(operationName)}$baseClassName';
-    builder.extend = refer('GraphqlRequest');
-    builder.fields.add(
-      Field(
-        (builder) => builder
-          ..static = true
-          ..name = '_query'
+    builder.fields.addAll(
+      [
+        Field((field) => field
+          ..name = 'query'
           ..type = refer('String')
+          ..modifier = FieldModifier.final$),
+        Field((field) => field
+          ..name = 'operation'
+          ..type = refer('String')
+          ..modifier = FieldModifier.final$),
+        Field((field) => field
+          ..modifier = FieldModifier.final$
+          ..name = 'variables'
+          ..type = refer('Map<String, dynamic>')),
+        Field((field) => field
+          ..static = true
           ..modifier = FieldModifier.constant
-          ..assignment = Code("""
-                    r\"\"\"
-                    $query
-                    \"\"\"
-                  """),
-      ),
+          ..type = refer('String')
+          ..name = '_query'
+          ..assignment = Code("r\"\"\"$query\"\"\"")),
+      ],
     );
-    builder.constructors.add(Constructor((builder) {
+
+    builder.constructors.add(Constructor((struct) {
       final variables = operation.variables ?? [];
       Map<String, dynamic> _variablsMap = {};
 
       if (variables.isNotEmpty) {
         for (final variable in variables) {
           if (variable.nullable) {
-            builder.optionalParameters.add(
+            struct.optionalParameters.add(
               Parameter((builder) => builder
                 ..name = variable.name
                 ..required = false
@@ -118,7 +126,7 @@ Future<Class> getClassDefinition(
             _variablsMap['if (${variable.name} != null) "${variable.name}"'] =
                 "${variable.name}";
           } else {
-            builder.requiredParameters.add(
+            struct.requiredParameters.add(
               Parameter((builder) => builder
                 ..name = variable.name
                 ..type = variable.type),
@@ -128,13 +136,13 @@ Future<Class> getClassDefinition(
         }
       }
 
-      final codeChunks = <String>[
-        '_query',
-        'operationName: "$operationName"',
-        if (variables.isNotEmpty) 'variables: $_variablsMap'
-      ].join(',');
-
-      builder.initializers.add(Code('super($codeChunks)'));
+      struct
+        ..lambda = true
+        ..initializers.addAll([
+          Code('query = _query'),
+          Code('operation = "$operationName"'),
+          Code('variables = $_variablsMap')
+        ]);
     }));
   });
 }
