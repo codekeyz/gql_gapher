@@ -2,8 +2,8 @@ import 'dart:io';
 import 'package:code_builder/code_builder.dart';
 import 'package:test/test.dart';
 
-import 'package:gql_codegen/src/parser.dart';
-import 'package:gql_codegen/src/data.dart';
+import 'package:gql_gapher/src/parser.dart';
+import 'package:gql_gapher/src/data.dart';
 
 void main() {
   const RESOURCE_PATH = 'test/graphql';

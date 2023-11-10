@@ -1,12 +1,12 @@
 targets:
-  gql_codegen:gql_codegen:
+  gql_gapher:gql_gapher:
     builders:
-      gql_codegen|gql_codegen_builder:
+      gql_gapher|gql_gapher_builder:
         enabled: True
 
 builders:
-  gql_codegen_builder:
-    import: "package:gql_codegen/gql_codegen.dart"
+  gql_gapher_builder:
+    import: "package:gql_gapher/gql_gapher.dart"
     builder_factories: ["gqlBuilder"]
     build_extensions: { ".graphql": [".g.dart"], ".gql": [".g.dart"] }
     auto_apply: root_package

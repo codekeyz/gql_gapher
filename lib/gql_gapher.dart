@@ -1,4 +1,4 @@
-library gql_codegen;
+library gql_gapher;
 
 import 'package:build/build.dart';
 import 'src/builder.dart';

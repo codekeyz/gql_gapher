@@ -1,6 +1,6 @@
-# gql_codegen
+# gql_gapher
 
-[![Dart CI](https://github.com/codekeyz/gql_codegen/workflows/Dart/badge.svg)](https://github.com/codekeyz/gql_codegen/actions/workflows/dart.yml)
+[![Dart CI](https://github.com/codekeyz/gql_gapher/workflows/Dart/badge.svg)](https://github.com/codekeyz/gql_gapher/actions/workflows/dart.yml)
 
 Tired of writing your queries & mutation as raw strings `r""" """` in Dart and Flutter? 👋
 
@@ -8,11 +8,11 @@ Validate and generate typed request classes for all your queries and mutations d
 
 ## Usage
 
-Add `gql_codegen` to your dev dependencies
+Add `gql_gapher` to your dev dependencies
 
 ```yaml
 dev_dependencies:
-  gql_codegen: any   // required dart >=2.12.0
+  gql_gapher: any   // required dart >=2.12.0
   build_runner:
 ```
 
