@@ -58,8 +58,8 @@ flutter pub run build_runner build
 import 'authenticate.g.dart';
 
 void main() {
-  final authPreq =
-      AuthenticateUserRequest('some-token', 2, amount: 10, persist: true);
+
+  final authPreq = AuthenticateUserRequest('First', 2, third: true, fourth: 2.3);
 
   print(authPreq.query); // query
 
